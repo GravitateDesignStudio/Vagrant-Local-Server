@@ -1,4 +1,6 @@
 ####### Misc Files #######
+.gitignore
+.vagrant
 .DS_Store
 .DS_Store?
 ._*
@@ -15,5 +17,4 @@ ehthumbs.db
 error_log
 access_log
 .sass-cache
-.vagrant
 node_modules
