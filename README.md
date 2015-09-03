@@ -1,6 +1,15 @@
 # Vagrant-Local-Server
 
+This will use Vagrant and VirtualBox to launch a local Dev Environment using Nginx or Apache  
 
+Supports  
+* Nginx 1.8 OR Apache 2.4
+* PHP 5.5.9
+* SSL Support (Self-Signed)
+* PHPMyAdmin
+* Port Fowarding from local machine to virtualBox using pfctl
+
+## Installation ##  
 
 STEP 1  
 Install Vagrant  
@@ -46,7 +55,7 @@ Switching from Nginx to/from Apache
 
 Adding a new site  
 Just include another folder in the /local/www folder.  Make sure to name the folder the same as you want the domain to be and also include a "public_html" folder in it.  
-Then run ```vagrant reload``` (nginx) OR ```vagrant reload apache```
+Then run ```vagrant reload``` (nginx) OR ```vagrant reload apache``` (apache)
 
 
 
