@@ -2,12 +2,13 @@
 
 This will use Vagrant and VirtualBox to launch a local Dev Environment using Nginx or Apache  
 
-Supports  
+Includes  
 * Nginx 1.8 OR Apache 2.4
 * PHP 5.5.9
 * SSL Support (Self-Signed)
 * PHPMyAdmin
 * Port Fowarding from local machine to virtualBox using pfctl
+* Index Page with click links to your sites.
 
 ## Installation ##  
 
