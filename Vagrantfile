@@ -12,103 +12,25 @@ Vagrant.configure(2) do |config|
     # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
     # documentation for more information about their specific syntax and use.
 
-    config.vm.provision "shell", inline: <<-SHELL
+    config.vm.define "nginx", primary: true do |nginx|
 
-        apt-get update
-        apt-get install -y python-software-properties
-        add-apt-repository -y ppa:nginx/stable
-        apt-get update
-        apt-get install -y nginx -o Dpkg::Options::="--force-confold"
-        apt-get install -y php5-fpm php5-mysql php5-mcrypt php5-json php5-curl php5-memcached php5-memcache php5-gd
+        nginx.vm.provision "shell", inline: <<-SHELL
 
-        export DEBIAN_FRONTEND=noninteractive
-        debconf-set-selections <<< 'mysql-server mysql-server/root_password password pass'
-        debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password pass'
-        apt-get -y install mysql-server
+            apt-get install -y python-software-properties
+            add-apt-repository -y ppa:nginx/stable
+            apt-get update
+            apt-get install -y nginx -o Dpkg::Options::="--force-confold"
+            apt-get install -y php5-fpm
 
-        debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
-        debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password pass'
-        debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password pass'
-        debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password pass'
-        debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect '
-        apt-get -q -y install phpmyadmin
+            service php5-fpm restart
 
-        php5enmod mcrypt
-        php5enmod json
-
-        service php5-fpm restart
-
-        if [ ! -d /home/vagrant/scripts ]
-        then
-            mkdir /home/vagrant/scripts
-        fi
-
-        if [ ! -d /etc/nginx/ssl ]
-        then
-            mkdir /etc/nginx/ssl
-        fi
-
-        if [ ! -f /etc/nginx/ssl/nginx.cert ]
-        then
-            openssl req -new -newkey rsa:2048 -days 999 -nodes -x509 -subj "/C=US/ST=Washington/L=Vancouver/O=Admin/CN=server.com" -keyout /etc/nginx/ssl/nginx.key -out /etc/nginx/ssl/nginx.cert
-        fi
-
-        echo "<?php
-
-/* Servers configuration */
-\\$i = 1;
-\\$cfg['Servers'][\\$i]['verbose'] = '';
-\\$cfg['Servers'][\\$i]['host'] = '127.0.0.1';
-\\$cfg['Servers'][\\$i]['port'] = '';
-\\$cfg['Servers'][\\$i]['socket'] = '';
-\\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
-\\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
-\\$cfg['Servers'][\\$i]['auth_type'] = 'config';
-\\$cfg['Servers'][\\$i]['user'] = 'root';
-\\$cfg['Servers'][\\$i]['password'] = 'pass';
-\\$cfg['Servers'][\\$i]['hide_db'] = '(information_schema|performance_schema|mysql|phpmyadmin)';
-
-\\$i++;
-\\$cfg['Servers'][\\$i]['host'] = 'grav-dev.com';
-\\$cfg['Servers'][\\$i]['port'] = '53306';
-\\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
-\\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
-\\$cfg['Servers'][\\$i]['auth_type'] = 'config';
-\\$cfg['Servers'][\\$i]['user'] = 'gravitate';
-\\$cfg['Servers'][\\$i]['password'] = 'qsZ\\$t<e2:a@nVtF2PH';
-
-\\$cfg['DefaultLang'] = 'en-utf-8';
-\\$cfg['ForceSSL'] = true;
-
-if(is_dir('/vagrant/phpmyadmin_dbs'))
-{
-    foreach(glob('/vagrant/phpmyadmin_dbs/*.php') as \\$db_file)
-    {
-        \\$phpmyadmin_db = array();
-        include(\\$db_file);
-        if(!empty(\\$phpmyadmin_db['host']) && !empty(\\$phpmyadmin_db['user']) && !empty(\\$phpmyadmin_db['pass']))
-        {
-                \\$i++;
-                \\$cfg['Servers'][\\$i]['verbose'] = (!empty(\\$phpmyadmin_db['label']) ? \\$phpmyadmin_db['label'] : '');
-                \\$cfg['Servers'][\\$i]['host'] = \\$phpmyadmin_db['host'];
-                \\$cfg['Servers'][\\$i]['port'] = (!empty(\\$phpmyadmin_db['port']) ? \\$phpmyadmin_db['port'] : '3306');
-                \\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
-                \\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
-                \\$cfg['Servers'][\\$i]['auth_type'] = 'config';
-                \\$cfg['Servers'][\\$i]['user'] = \\$phpmyadmin_db['user'];
-                \\$cfg['Servers'][\\$i]['password'] = \\$phpmyadmin_db['pass'];
-                \\$cfg['Servers'][\\$i]['hide_db'] = '(information_schema|performance_schema|mysql|phpmyadmin)';
-            }
-    }
-}" > /etc/phpmyadmin/conf.d/localhost.php
-
-        echo 'server {
+            echo 'server {
     listen 80 default_server;
     listen 443 ssl default_server;
     server_name localhost;
 
-    ssl_certificate /etc/nginx/ssl/nginx.cert;
-    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+    ssl_certificate /etc/ssl/server.cert;
+    ssl_certificate_key /etc/ssl/server.key;
 
     location / {
        root /vagrant/www;
@@ -160,23 +82,23 @@ if(is_dir('/vagrant/phpmyadmin_dbs'))
     }
 }' > /etc/nginx/sites-available/default
 
-        echo '#!/usr/bin/env bash
+            echo '#!/usr/bin/env bash
 
-        for file in /vagrant/www/* ; do
+for file in /vagrant/www/* ; do
 
-            FILE=$(basename $file)
+    FILE=$(basename $file)
 
-            BASE_NAME=$FILE
+    BASE_NAME=$FILE
 
-            if [[ $BASE_NAME == *"local."* ]]
-            then
-                echo "server {
+    if [[ $BASE_NAME == *"local."* ]]
+    then
+        echo "server {
     listen 80;
     listen 443 ssl;
     server_name  $BASE_NAME;
 
-    ssl_certificate /etc/nginx/ssl/nginx.cert;
-    ssl_certificate_key /etc/nginx/ssl/nginx.key;
+    ssl_certificate /etc/ssl/server.cert;
+    ssl_certificate_key /etc/ssl/server.key;
 
     root /vagrant/www/$BASE_NAME/public_html;
 
@@ -237,18 +159,193 @@ if(is_dir('/vagrant/phpmyadmin_dbs'))
     }
 }" > /etc/nginx/sites-available/$BASE_NAME
 
-                if ! [ -L /etc/nginx/sites-enabled/$BASE_NAME ]; then
-                  ln -s /etc/nginx/sites-available/$BASE_NAME /etc/nginx/sites-enabled/
-                fi
+        if ! [ -L /etc/nginx/sites-enabled/$BASE_NAME ]; then
+          ln -s /etc/nginx/sites-available/$BASE_NAME /etc/nginx/sites-enabled/
+        fi
 
-                echo "Created Site - $BASE_NAME"
-            fi
+        echo "Created Site - $BASE_NAME"
+    fi
 
-        done
+done
 
-        service nginx reload
+service nginx reload
 
-        ' > /home/vagrant/scripts/vagrant_setup.sh
+' > /home/vagrant/scripts/vagrant_setup.sh
+
+        SHELL
+
+    end
+
+    config.vm.define "apache", autostart: false do |apache|
+
+        apache.vm.provision "shell", inline: <<-SHELL
+
+            apt-get install -y apache2
+            apt-get install -y php5 libapache2-mod-php5
+
+            a2enmod ssl
+
+            echo "<VirtualHost *:80>
+     ServerAdmin webmaster@example.com
+     DocumentRoot /vagrant/www
+     <Directory />
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+     </Directory>
+</VirtualHost>
+<VirtualHost *:443>
+     DocumentRoot /vagrant/www
+     SSLEngine on
+     SSLProtocol all -SSLv2
+     SSLCipherSuite ALL:!ADH:!EXPORT:!SSLv2:RC4+RSA:+HIGH:+MEDIUM:+LOW
+     SSLCertificateFile /etc/ssl/server.cert
+     SSLCertificateKeyFile /etc/ssl/server.key
+     <Directory />
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+     </Directory>
+</VirtualHost>" > /etc/apache2/sites-available/000-default.conf
+
+
+
+            echo '#!/usr/bin/env bash
+
+for file in /vagrant/www/* ; do
+
+    FILE=$(basename $file)
+
+    BASE_NAME=$FILE
+
+    if [[ $BASE_NAME == *"local."* ]]
+    then
+        echo "<VirtualHost *:80>
+     ServerAdmin webmaster@example.com
+     DocumentRoot /vagrant/www/$BASE_NAME/public_html
+     ServerName $BASE_NAME
+     <Directory />
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+     </Directory>
+</VirtualHost>
+<VirtualHost *:443>
+     DocumentRoot /vagrant/www/$BASE_NAME/public_html
+     ServerName $BASE_NAME.dev.gravitatedesign.com
+     SSLEngine on
+     SSLProtocol all -SSLv2
+     SSLCipherSuite ALL:!ADH:!EXPORT:!SSLv2:RC4+RSA:+HIGH:+MEDIUM:+LOW
+     SSLCertificateFile /etc/ssl/server.cert
+     SSLCertificateKeyFile /etc/ssl/server.key
+     <Directory />
+        Options Indexes FollowSymLinks
+        AllowOverride None
+        Require all granted
+     </Directory>
+</VirtualHost>" > /etc/apache2/sites-available/$BASE_NAME.conf
+
+        a2ensite $BASE_NAME.conf
+
+        echo "Created Site - $BASE_NAME"
+    fi
+
+done
+
+service apache2 restart
+
+' > /home/vagrant/scripts/vagrant_setup.sh
+
+        cp /etc/phpmyadmin/apache.conf /etc/apache2/conf-enabled/
+
+        SHELL
+
+    end
+
+    config.vm.provision "shell", inline: <<-SHELL
+
+        apt-get update
+
+        apt-get install -y php5-mysql php5-mcrypt php5-json php5-curl php5-memcached php5-memcache php5-gd
+
+        export DEBIAN_FRONTEND=noninteractive
+        debconf-set-selections <<< 'mysql-server mysql-server/root_password password pass'
+        debconf-set-selections <<< 'mysql-server mysql-server/root_password_again password pass'
+        apt-get -y install mysql-server
+
+        debconf-set-selections <<< 'phpmyadmin phpmyadmin/dbconfig-install boolean true'
+        debconf-set-selections <<< 'phpmyadmin phpmyadmin/app-password-confirm password pass'
+        debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/admin-pass password pass'
+        debconf-set-selections <<< 'phpmyadmin phpmyadmin/mysql/app-pass password pass'
+        debconf-set-selections <<< 'phpmyadmin phpmyadmin/reconfigure-webserver multiselect '
+        apt-get -q -y install phpmyadmin
+
+        php5enmod mcrypt
+        php5enmod json
+
+        if [ ! -d /home/vagrant/scripts ]
+        then
+            mkdir /home/vagrant/scripts
+        fi
+
+        if [ ! -d /etc/ssl ]
+        then
+            mkdir /etc/ssl
+        fi
+
+        if [ ! -f /etc/ssl/server.cert ]
+        then
+            openssl req -new -newkey rsa:2048 -days 999 -nodes -x509 -subj "/C=US/ST=Washington/L=Vancouver/O=Admin/CN=server.com" -keyout /etc/ssl/server.key -out /etc/ssl/server.cert
+        fi
+
+        echo "<?php
+
+/* Servers configuration */
+\\$i = 1;
+\\$cfg['Servers'][\\$i]['verbose'] = '';
+\\$cfg['Servers'][\\$i]['host'] = '127.0.0.1';
+\\$cfg['Servers'][\\$i]['port'] = '';
+\\$cfg['Servers'][\\$i]['socket'] = '';
+\\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
+\\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
+\\$cfg['Servers'][\\$i]['auth_type'] = 'config';
+\\$cfg['Servers'][\\$i]['user'] = 'root';
+\\$cfg['Servers'][\\$i]['password'] = 'pass';
+\\$cfg['Servers'][\\$i]['hide_db'] = '(information_schema|performance_schema|mysql|phpmyadmin)';
+
+\\$i++;
+\\$cfg['Servers'][\\$i]['host'] = 'grav-dev.com';
+\\$cfg['Servers'][\\$i]['port'] = '53306';
+\\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
+\\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
+\\$cfg['Servers'][\\$i]['auth_type'] = 'config';
+\\$cfg['Servers'][\\$i]['user'] = 'gravitate';
+\\$cfg['Servers'][\\$i]['password'] = 'qsZ\\$t<e2:a@nVtF2PH';
+
+\\$cfg['DefaultLang'] = 'en-utf-8';
+\\$cfg['ForceSSL'] = true;
+
+if(is_dir('/vagrant/phpmyadmin_dbs'))
+{
+    foreach(glob('/vagrant/phpmyadmin_dbs/*.php') as \\$db_file)
+    {
+        \\$phpmyadmin_db = array();
+        include(\\$db_file);
+        if(!empty(\\$phpmyadmin_db['host']) && !empty(\\$phpmyadmin_db['user']) && !empty(\\$phpmyadmin_db['pass']))
+        {
+                \\$i++;
+                \\$cfg['Servers'][\\$i]['verbose'] = (!empty(\\$phpmyadmin_db['label']) ? \\$phpmyadmin_db['label'] : '');
+                \\$cfg['Servers'][\\$i]['host'] = \\$phpmyadmin_db['host'];
+                \\$cfg['Servers'][\\$i]['port'] = (!empty(\\$phpmyadmin_db['port']) ? \\$phpmyadmin_db['port'] : '3306');
+                \\$cfg['Servers'][\\$i]['connect_type'] = 'tcp';
+                \\$cfg['Servers'][\\$i]['extension'] = 'mysqli';
+                \\$cfg['Servers'][\\$i]['auth_type'] = 'config';
+                \\$cfg['Servers'][\\$i]['user'] = \\$phpmyadmin_db['user'];
+                \\$cfg['Servers'][\\$i]['password'] = \\$phpmyadmin_db['pass'];
+                \\$cfg['Servers'][\\$i]['hide_db'] = '(information_schema|performance_schema|mysql|phpmyadmin)';
+            }
+    }
+}" > /etc/phpmyadmin/conf.d/localhost.php
 
     SHELL
 
