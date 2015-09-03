@@ -27,7 +27,7 @@ if(!empty($_GET['phpinfo']))
 foreach (glob('*local.*') as $site)
 {
 	?>
-	<a href="http://<?php echo basename($site);?>"><?php echo basename($site);?></a>
+	<a href="http://<?php echo basename($site);?>"><?php echo basename($site);?></a><br>
 	<?php
 }
 
