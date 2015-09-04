@@ -208,7 +208,7 @@ service nginx reload
      </Directory>
 </VirtualHost>" > /etc/apache2/sites-available/000-default.conf
 
-
+            echo "ServerName localhost" > /etc/apache2/conf-enabled/servername.conf
 
             echo '#!/usr/bin/env bash
 

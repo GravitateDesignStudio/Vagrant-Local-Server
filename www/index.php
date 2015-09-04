@@ -21,7 +21,7 @@ if(!empty($_GET['phpinfo']))
 }
 
 ?>
-<a href="?phpinfo=1">phpInfo()</a><br><br>
+<a href="?phpinfo=1">phpInfo()</a> | <a href="/phpmyadmin">PHPMyAdmin</a><br><br>
 <?php
 
 foreach (glob('*local.*') as $site)
